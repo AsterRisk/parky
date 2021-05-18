@@ -49,7 +49,7 @@ app.component('app-header', {
                             <span class = " logged-in navitem "><a v-bind:href=reservation_link()>Reservations</a></span>                            
                             <span class = " logged-out account-ctrls navitem " id = "login"><a href = "/login">Login</a></span>
                             <span class = " logged-out account-ctrls navitem " id = "register"><a href = "/register">Register</a></span>
-                            <span @click = "logout" class = " logged-in account-ctrls navitem" id = "/#"><a href = "/auth/logout">Logout</a></span>
+                            <span @click = "logout" class = " logged-in account-ctrls navitem" id = "/#"><a href = "/login">Logout</a></span>
                         </header>    
                     </div>
                     
@@ -65,7 +65,7 @@ app.component('app-header', {
         let logged_in = document.getElementsByClassName('logged-in');
         let logged_out = document.getElementsByClassName('logged-out');
         let x;
-        if(self.loggedIn)
+        if(self.loggedIn == true)
         {
             for(x=0;x<logged_in.length;x++)
             {
@@ -123,6 +123,12 @@ app.component('app-header', {
                 return response.json();
             })
             .then(function (response) {
+                localStorage.setItem('user_id', null)
+                localStorage.setItem('email', null)
+                localStorage.setItem('name', null)
+                localStorage.setItem('role', null)
+                localStorage.setItem('token', null)
+                localStorage.setItem('loggedIn', false)
                 window.location.href = "/login/"
             })
         },
@@ -209,22 +215,24 @@ const LoginForm = {
 
                     // We store this token in localStorage so that subsequent API requests
                     // can use the token until it expires or is deleted.
-                    localStorage.setItem("token", jwt_token);
-                    localStorage.setItem("user_id", user_id);
-                    localStorage.setItem("role", response.role);
-                    localStorage.setItem("email", response.email)
-                    localStorage.setItem("name", response.name)
-                    localStorage.setItem("loggedIn", true)
-                    console.info("Token generated and added to localStorage.");
-                    self.token = jwt_token;
+                    
                     
                     console.log(response);
                     if(response['message'] == "Login Successful")
                     {
+                        localStorage.setItem("token", jwt_token);
+                        localStorage.setItem("user_id", user_id);
+                        localStorage.setItem("role", response.role);
+                        localStorage.setItem("email", response.email)
+                        localStorage.setItem("name", response.name)
+                        localStorage.setItem("loggedIn", true)
+                        console.info("Token generated and added to localStorage.");
+                        self.token = jwt_token;
                         window.location.href = "/reservations/" + response['user_id']
                     }
                     else{
                         console.log("i forgot my password :(")
+                        window.location.href = "/login/" + response['user_id']
                     }
                 })
                 .catch(function (error) {

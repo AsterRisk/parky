@@ -148,7 +148,7 @@ def create_checkout_session():
                 },
             ],
             mode = 'payment',
-            success_url = "http://127.0.0.1:5000/api/pay_success/{}".format(form.user_id.data),
+            success_url = "http://127.0.0.1:5000/api/pay_success",
             cancel_url = "http://127.0.0.1:5000/api/pay_failure"
         )
         print(checkout_session)
@@ -157,12 +157,12 @@ def create_checkout_session():
 @app.route('/api/pay_success')
 def payment_success():
     flash("Payment successful", "success")
-    return redirect("/set")
+    return redirect("/search")
 
 @app.route('/api/pay_failure')
 def payment_failure():
     flash("Payment failed", "danger")
-    return redirect("/set")
+    return redirect("/search")
 
 @app.route('/demo_setup', methods = ['GET'])
 def setup_demo():
