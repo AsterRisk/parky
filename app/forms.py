@@ -33,7 +33,7 @@ class ReservationForm(FlaskForm):
     end_time = StringField(_name ='end_time', id = 'end_time', validators=[InputRequired()])
     license_plate = StringField(_name = 'license_plate', id ='license_plate', validators=[InputRequired()])
     token = StringField(_name = "request_token", id = "request_token")
-    pay_later = BooleanField(_name='pay_later', id = "pay_later", validators=[InputRequired()])
+    pay_later = BooleanField(_name='pay_later', id = "pay_later", validators=[])
 
 class ChangeStateForm(FlaskForm):
     res_id = StringField(_name = "res_id", id = "res_id")
@@ -42,9 +42,18 @@ class ChangeStateForm(FlaskForm):
 
 class ReviewForm(FlaskForm):
     review_text = StringField(_name = "review_text", id = "review_text")
-    rating = SelectField(_name = "rating", id = "rating")
+    rating = SelectField(_name = "rating", id = "rating", choices = [1, 2, 3, 4, 5])
     review_lot_id = StringField(_name = "review_lot_id", id = "review_lot_id")
 
+class EditLotForm(FlaskForm):
+    new_rate = StringField(_name = "new_rate", id = "new_rate")
+    new_cap = StringField(_name = "new_cap", id = "new_cap")
+    new_addr = StringField(_name = "new_addr", id = "new_addr")
+    edit_lot_id = StringField(_name = "edit_lot_id", id = "edit_lot_id") 
+
+class CertifyLotForm(FlaskForm):
+    certify_lot_id = StringField(_name="certify_lot_id", id = "certify_lot_id")
+    photo = FileField(_name = "photo", id = "photo", validators=[FileRequired(), FileAllowed(['jpg', 'png', 'webp'])])
 
 class SearchForm(FlaskForm):
     street_location = StringField(_name="destination", id = "destination")

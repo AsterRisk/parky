@@ -23,6 +23,7 @@ body{
     align-self: center;
 }
 
+
 .footer-container{
     position:absolute;
     bottom:-220px;
@@ -62,3 +63,42 @@ header a:hover{
     float: right;
 }
 
+.form-btn{
+	background-color: rgb(45, 97, 241);
+	color: #fff;
+	font-weight: bold;
+	border: solid;
+	border-radius: 10px;
+}
+
+.form-btn:hover{
+	background-color: rgb(78, 123, 247);
+	color: #fff;
+	font-weight: bold;
+	border: solid;
+}
+
+.red{
+    background-color: rgb(247, 63, 63);
+}
+
+.red:hover{
+	background-color: rgb(252, 88, 88);
+}
+
+.green{
+	background-color: rgb(31, 114, 31);
+}
+
+.green:hover{
+	background-color: rgb(74, 148, 74);
+}
+
+
+table{
+    width:100%;
+}
+
+.half{
+    width: 45%;
+}

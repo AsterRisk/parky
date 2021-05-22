@@ -46,10 +46,13 @@ app.component('app-header', {
                         <header>
                             <span id = "business-name" class = "navitem"><i id = "car" class = "fa fa-car"></i>Parky</span>
                             <span class = " logged-in navitem "><a href = "/search">Search</a></span>
-                            <span class = " logged-in navitem "><a v-bind:href=reservation_link()>Reservations</a></span>                            
+                            <span class = " logged-in navitem "><a href = "/reservations/">Reservations</a></span>  
+                            <span class = " logged-in navitem "><a href = "/lots/new">Create a New Lot</a></span>   
+                            <span class = " logged-in navitem "><a href = "/certify/">Certify Lots</a></span>     
+                            <span class = " logged-in navitem "><a href = "/lots/">View my Lots</a></span>                            
                             <span class = " logged-out account-ctrls navitem " id = "login"><a href = "/login">Login</a></span>
                             <span class = " logged-out account-ctrls navitem " id = "register"><a href = "/register">Register</a></span>
-                            <span @click = "logout" class = " logged-in account-ctrls navitem" id = "/#"><a href = "/login">Logout</a></span>
+                            <span @click = "logout" class = " logged-in account-ctrls navitem" id = "/#"><a href = "/index">Logout</a></span>
                         </header>    
                     </div>
                     
@@ -65,6 +68,7 @@ app.component('app-header', {
         let logged_in = document.getElementsByClassName('logged-in');
         let logged_out = document.getElementsByClassName('logged-out');
         let x;
+        console.log(localStorage.getItem('user_id'))
         if(self.loggedIn == true)
         {
             for(x=0;x<logged_in.length;x++)
@@ -122,14 +126,15 @@ app.component('app-header', {
             .then(function (response) {
                 return response.json();
             })
-            .then(function (response) {
-                localStorage.setItem('user_id', null)
-                localStorage.setItem('email', null)
-                localStorage.setItem('name', null)
-                localStorage.setItem('role', null)
-                localStorage.setItem('token', null)
+            .then(function () {
+                localStorage.setItem('user_id', "undefined")
+                localStorage.setItem('email', "undefined")
+                localStorage.setItem('name', "undefined")
+                localStorage.setItem('role', "undefined")
+                localStorage.setItem('token', "undefined")
                 localStorage.setItem('loggedIn', false)
-                window.location.href = "/login/"
+                window.location.href = "/index/"
+                console.log(localStorage.getItem('user_id'))
             })
         },
         reservation_link(){
@@ -228,11 +233,11 @@ const LoginForm = {
                         localStorage.setItem("loggedIn", true)
                         console.info("Token generated and added to localStorage.");
                         self.token = jwt_token;
-                        window.location.href = "/reservations/" + response['user_id']
+                        window.location.href = "/reservations/" 
                     }
                     else{
                         console.log("i forgot my password :(")
-                        window.location.href = "/login/" + response['user_id']
+                        window.location.href = "/login/" 
                     }
                 })
                 .catch(function (error) {
@@ -491,531 +496,6 @@ const LotForm = {
     }
 };
 
-const ViewCar = {
-    name: 'ViewCar',
-    template: `<!--<div class="carDiv">
-            <h2>This Car</h2>
-            <div>
-            <img v-bind:src=getImgUrl(car_data.photo)>
-            <p> Year: {{ car_data.year }} </p> <p> Manufacturer: {{ car_data.make }} </p>
-            <p> Model: {{ car_data.model }} </p>
-            <p> Description: {{ car_data.description }} </p>
-            <p> Price: {{ car_data.price }} </p>
-            <p> Type: {{ car_data.car_type }} </p>
-            <p> Colour: {{ car_data.colour }} </p>
- 
-            <button @click="addFavourite" >Add to Favourite</button>
-            <button>Email Owner</button>
- 
-            </div>
-            
-        </div>-->
-                <link rel = 'stylesheet' href= '../static/css/details.css'/>
-                <div id = "car-card">
-                    <div id="car-detail-image">
-                        <img v-bind:src=getImgUrl(car_data.photo) class = "car-picture"/>
-                    </div>
-                    <div id = "car-detail">
-                        <h2 id = "car-year">{{ car_data.year }} {{ car_data.make }}</h2>
-                        <h3 id = "car-model">{{ car_data.model }}</h3>
-                    
-                    
-                    
-                        <p id = "description">
-                            {{ car_data.description }}
-                        </p>
-                        <br>
-                        <div id = "car-values">
-                            <span class = "car-info">
-                                <span class = "detail-title">Color</span>
-                                <span class = "detail-value">{{car_data.colour}}</span>
-                            </span>
-                            <span class = "car-info">
-                                <span class = "detail-title">Body Type</span>
-                                <span class = "detail-value">{{car_data.car_type}}</span>
-                            </span>
-                            <span class = "car-info">
-                                <span class = "detail-title">Price</span>
-                                <span class = "detail-value">$ {{car_data.price}}</span>
-                            </span>
-                            <span class = "car-info">
-                                <span class = "detail-title">Transmission</span>
-                                <span class = "detail-value">{{car_data.transmission}}</span>
-                            </span>
-                        </div>
-                        <br>
-                        <span>
-                            <button id = "email-owner">Email Owner</button>
-                            <button id = "add-favourite" @click="addFavourite"><i id = "heart" class = "fa fa-heart-o" ></i></button>
-                            
-                        </span>
-                    </div>
-                    <br>
-                    
-                        
-                        
-                    
-                </div>
-                <!--
-                {% end block %}
-                -->
-            </body>
-        </html>`,
-        created() {
-            let self = this;
-     
-            let id = this.$route.query.uid
-     
-            fetch('/api/cars/' + String(id),
-                {
-                    method: 'GET',
-                    headers: {
-                        Authorization: "Bearer " + localStorage.getItem("token"),
-                    }
-                })
-                .then(function (response) {
-                    return response.json();
-                })
-                .then(function (data) {
-                    console.log(data);
-                    self.car_data = data;
-                })
-        },
-        data() {
-            return {
-                car_data: []
-            }
-        },
-        methods: {
-            addFavourite() {
-                let self = this;
-                let heart = document.getElementById("heart")
-                let id = this.$route.query.uid
-                if(heart.classList.contains("fa-heart-o"))
-                {
-                    heart.classList.remove("fa-heart-o");
-                    heart.classList.add("fa-heart");
-                    fetch('/api/cars/'+ (id) +'/favourite', {
-                        method: 'POST',
-                        headers: {
-                            Authorization: "Bearer " + localStorage.getItem("token"),
-                            'X-CSRFToken': token
-                        }
-                    })
-                        .then(function (response) {
-                            return response.json();
-                        })
-                        .then(function (data) {
-                            console.log(data);
-                            self.articles = data.articles;
-                        })
-                }
-                else
-                {
-                    this.removeFavourite()
-                }
-                
-                console.log(id)
-                // console.log("hello")
-                
-                
-            },
-
-            removeFavourite() {
-                let self = this;
-                let id = this.$route.query.uid
-                let heart = document.getElementById("heart")
-                heart.classList.remove("fa-heart");
-                heart.classList.add("fa-heart-o");
-                console.log(id)
-                // console.log("hello")
-                
-                fetch('/api/cars/'+ (id) +'/remove_favourite', {
-                    method: 'POST',
-                    headers: {
-                        Authorization: "Bearer " + localStorage.getItem("token"),
-                        'X-CSRFToken': token
-                    }
-                })
-                    .then(function (response) {
-                        return response.json();
-                    })
-                    .then(function (data) {
-                        console.log(data);
-                        self.articles = data.articles;
-                    })
-            },
-     
-            getImgUrl(pic) {
-                return '../static/car_uploads/'+ pic;
-            }
-        }
-};
-    
-const ViewUser = {
-    name: 'ViewUser',
-    
-    template: `<!--<div class="userDiv">
-            <h2>User: {{ user_data.username }}</h2>
-            <div>
-            <img v-bind:src=getImgUrl(user_data.photo)>
-            <p> Name: {{ user_data.name }} </p>
-            <p> Bio: {{ user_data.biography }} </p>
-            <p> Email: {{ user_data.email }} </p>
-            <p> Location: {{ user_data.location }} </p>
-            <p> Joined: {{ user_data.date_joined }} </p>
-            </div>
-            
-        </div>-->
-        
-                <title>Profile: {{user_data.username}} </title>
-                <link rel = 'stylesheet' href= '../static/css/profile.css'/>
-                <div id = "information">
-                    <div id = "profile-card">
-                        <br>
-                        <div class = 'profile-picture'>
-                            <img v-bind:src=getImgUrl(user_data.photo) class = "user-picture"/>
-                        </div>
-                        <div class = "profile-info">
-                            <span class = "user-name"><h2>{{ user_data.name }}</h2></span>
-                            <span class = "user-tag"><h3>@{{ user_data.username }}</h3></span>
-
-                            <span class = "user-details">
-                                <span class = "detail-title">Bio</span>
-                                <p class = "user-bio detail-value">
-                                    {{ user_data.biography }}
-                                </p>
-                            </span>
-
-                            
-
-                            <br>
-                            <div id = "user-info">
-                                <span class = "user-details">
-                                    <span class = "detail-title">Email</span>
-                                    <span class = "detail-value">{{ user_data.email }}</span>
-                                </span>
-                                <br>
-                                <br>
-                                <span class = "user-details">
-                                    <span class = "detail-title">Location</span>
-                                    <span class = "detail-value">{{ user_data.location }}</span>
-                                </span>
-                                <br>
-                                <br>
-                                <span class = "user-details">
-                                    <span class = "detail-title">Joined</span>
-                                    <span class = "detail-value">{{ user_data.date_joined }}</span>
-                                </span>
-                            </div>
-                            <br>
-                            <br>
-                            <br>
-                        </div>
-                        
-                    </div>
-                    <br>
-                    <h2>Cars Favourited</h2>
-                    <div id = "cars-list">
-                        <!--
-                            {$ for car in favourites %}
-                                <div class = "car-card">
-                                    <img src = "{{url_for('static',filename = 'images/{{car.media_addr}}')}}"/>
-                                    <span class = "car-year-make">
-                                        {{ car.year }}
-                                        
-                                        {{ car.make }}
-                                    </span>
-                                    <span class = "car-price">
-                                        <i class = "fa fa-tag"></i> {{ car.price }}
-                                    </span>
-                                    <span class = "car-model">
-                                        {{ car.model }}
-                                    </span>
-                                    <br>
-                                    <br>
-                                    <button class = "view-details" onclick="window.location.href='details/{{ car.id }}';"></button>
-                                </div>
-                            {% end for %}-->
-                            
-                            <div v-if=" num_fave>0">
-                                <ul >
-                                    <li v-for="car in favourites" class = "car-card">
-                                        <img v-bind:src=getCarImgUrl(car.photo)>
-                                        <span class = "car-year-make">
-                                            {{ car.year }}
-                                            
-                                            {{ car.make }}
-                                        </span>
-                                        <span class = "car-price">
-                                            <i class = "fa fa-tag"></i> {{ car.price }}
-                                        </span>
-                                        <span class = "car-model">
-                                            {{ car.model }}
-                                        </span>
-                                        <br>
-                                        <br>
-                                        <button class = "view-details" @click=getCar(car.id) >View Details</button>
-                                    </li>
-                                </ul>
-                            </div>
-                            <div v-else>
-                                <p>
-                                    This user has not favourited any cars.
-                                    
-                                </p>
-                            </div>
-                    </div>
-                </div> 
-                        
-                          
-                <!--
-                {% end block %}
-                -->
-            </body>
-        </html>
-        `,
-        
-        created() {
-            let self = this;
-           
-            
-            fetch('/api/users/' + self.user_id,
-                {
-                    method: 'GET',
-                    headers: {
-                    Authorization: "Bearer " + localStorage.getItem("token"),
-                    }
-                })
-                .then(function (response) {
-                
-                    return response.json();
-                })
-                .then(function (data) {
-                    console.log(data)
-                    
-                    self.user_data = data;
-                   
-                })
-                .catch(function (error) {
-                    console.log(error);
-                });
-            
-            fetch('/api/cars/' + self.user_id + '/favourites',
-                {
-                    method: 'GET',
-                    headers: {
-                    Authorization: "Bearer " + localStorage.getItem("token"),
-                    }
-                })
-                .then(function (response) {
-                    
-                    return response.json();
-                })
-                .then(function (data) {
-                    console.log(data)
-                    self.num_fave = data['num_fave']
-                    self.favourites = data['favourites']
-                    console.log(self.num_fave)
-                    console.log(self.favourites)
-                    
-                })
-                .catch(function (error) {
-                    console.log(error);
-                });
-        },
-        data() {
-     
-            return {
-                user_data: [],
-                favourites: [],
-                user_id: localStorage.getItem("user_id"),
-                num_fave:[],
-                
-            }
-        },
-        methods: {
-            getImgUrl(pic) {
-                return '../static/uploads/'+ pic;
-            },
-     
-            getCarImgUrl(pic) {
-                return '../static/car_uploads/'+ pic;
-            },
-     
-            getCar(cid){
-                this.$router.push({path:'/cars/' + cid, query: {uid:cid}})
-            }
-     
-                
-            
-        }
-    };
-    
-const ViewCars = {
-    name: 'ViewCars',
-    template: `
-        <!--<div class="carsDiv">
-                <div v-for="car in cars" >
-                    
-                    <img v-bind:src=getImgUrl(car.photo)>
-                    <p> Year: {{ car.year }} </p> <p> Manufacturer: {{ car.make }} </p>
-                    <p> Model: {{ car.model }} </p>
-                    <p> Description: {{ car.description }} </p>
-                    <p> Price: {{ car.price }} </p>
-                    <p> Type: {{ car.car_type }} </p>
-                    <p> Colour: {{ car.colour }} </p>
-                    <button @click=getCar(car.id)>See Details</button>
-                </div> 
-        </div>-->
-        <link rel = 'stylesheet' href= '../static/css/explore.css'/>
-        <div id = "information">
-            <h2>Explore</h2>
-            <div id = "explore-card">
-                <br>
-                
-                <div class = "profile-info">
-                    <form id = "search-form" @submit.prevent = "searchCar" method = "POST" >
-                        <label class = "form-input-label half">Make</label>
-                        <label id = "model-label" class = "form-input-label half">Model</label>
-                        <br>
-                        <input type = "text" name = "make" id = "make" placeholder = "Make"  class = "explore form-input third"/>
-                        <input type = "text" name = "model" id = "model" placeholder = "Model"  class = "explore  form-input third"/>
-                        <button type = "submit" value = "Search"  class = "explore search-btn form-input third"><i class = "fa fa-search"></i>Search</button>
-                    </form>
-                </div>
-                
-            </div>
-            <br>
-            <div id = "cars-list">
-            <ul>
-                <li v-for="car in cars" class = "car-card">
-                    <img v-bind:src=getCarImgUrl(car.photo)>
-                    <span class = "car-year-make">
-                        {{ car.year }}
-                        
-                        {{ car.make }}
-                    </span>
-                    <span class = "car-price">
-                        <i class = "fa fa-tag"></i> {{ car.price }}
-                    </span>
-                    <span class = "car-model">
-                        {{ car.model }}
-                    </span>
-                    <br>
-                    <br>
-                    <button class = "view-details" @click=getCar(car.id) >View Details</button>
-                </li>
-            </ul>
-            </div>
-        </div>   
-        <!--
-        {% end block %}
-        -->
-            </body>
-        </html>
-        `,
-    created() {
-        let self = this;
- 
-        fetch('/api/cars',
-            {
-                
-                method: 'GET',
-                headers: {
-                    Authorization: "Bearer " + localStorage.getItem("token"),
-                }
-            })
-            .then(function (response) {
-                return response.json();
-            })
-            .then(function (data) {
-                console.log(data);
-                self.cars = data.carlist;
-                console.log(self.cars)
-            })
-            
-    },
-    data() {
-        return {
-            cars: []
-        }
-    },
-    methods: {
-        getImgUrl(pic) {
-            return '../static/uploads/'+ pic;
-        },
-
-        getCarImgUrl(pic) {
-            return '../static/car_uploads/'+ pic;
-        },
- 
-        getCar(id){
-            this.$router.push({path:'/cars/' + id, query: {uid:id}})
-        },
-
-        /*
-            uploadCar() {
-            let self = this;
-            let carForm = document.getElementById('carForm');
-            let form_data = new FormData(carForm);
-
-            fetch("/api/cars", {
-                method: 'POST',
-                body: form_data,
-                headers: {
-                    Authorization: "Bearer " + localStorage.getItem("token"),
-                    'X-CSRFToken': token
-                },
-                credentials: 'same-origin'
-            })
-                .then(function (response) {
-                    return response.json();
-                })
-                .then(function (jsonResponse) {
-                    //display a success message
-                    console.log(jsonResponse);
-                    self.errors = jsonResponse.errors;
-                    window.location.href = "/users/" +jsonResponse['user_id'];
-                })
-                .catch(function (error) {
-                    console.log(error);
-                });
-            }
-        */
-        searchCar(){
-            let form = document.getElementById('search-form');
-            let form_data = new FormData(form);
-            
-            
-            console.log("HI");
-            fetch("/api/search", {
-                
-                method: 'POST',
-                body: form_data,
-                headers: {
-                    Authorization: "Bearer " + localStorage.getItem("token"),
-                    'X-CSRFToken': token
-                },
-                credentials: 'same-origin'
-                
-            })
-            .then(function (response) {
-                return response.json();
-            })
-            .then(function (jsonResponse) {
-                //display a success message
-                console.log(jsonResponse);
-                self.errors = jsonResponse.errors;
-                window.location.href = "/search/" ;
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-        }
-    }
-};
-
 const SearchResults = {
     name: 'SearchResults',
     template: `
@@ -1080,8 +560,12 @@ const SearchResults = {
         </html>
         `,
     created() {
+        document.title = "Search"
         let self = this;
- 
+        if(localStorage.getItem("role") === "undefined")
+        {
+            window.location.href = "/index/"
+        }
         fetch('/api/search',
             {
                 method: 'GET',
@@ -1120,31 +604,7 @@ const SearchResults = {
     }
 };
 
-const Home = {
-    name: 'Home',
-    template: `
-    <div class="jumbotron">
-        <h1>Project 2</h1>
-        <p class="lead">In this lab we will demonstrate VueJS working with Forms and Form Validation from Flask-WTF.</p>
-            <button><router-link class="nav-link" to="/login">Login<span class="sr-only">(current)</span></router-link></button>
-            <button><router-link class="nav-link" to="/register">Sign Up<span class="sr-only">(current)</span></router-link></button>
-            <button @click="removeToken">Log Out</button>
-    </div>
-    
 
-    `,
-    data() {
-        return {}
-    },
-    methods: {
-        removeToken() {
-            localStorage.removeItem("token");
-            localStorage.removeItem("user_id");
-            console.info("Token removed from localStorage.");
-            alert("Token removed!");
-        }
-    }
-};
 
 const NotFound = {
     name: 'NotFound',
@@ -1158,7 +618,7 @@ const NotFound = {
     }
 };
 
-const GetToken = {
+/*const GetToken = {
     name: 'GetToken',
     template: `<!--<div class="carDiv">
             <h2>This Car</h2>
@@ -1187,6 +647,7 @@ const GetToken = {
             </body>
         </html>`,
         created() {
+            document.title =
             let self = this;
      
             fetch('/api/set?lat=' + (Math.random() * (1) + 17) + "&long=" + (Math.random() * (-1) - 77),
@@ -1250,6 +711,512 @@ const GetToken = {
                 });
             }
         }
+};*/
+
+const CertifyLots = {
+    name: `CertifyLots`,
+    template:
+    `
+    <link rel = 'stylesheet' href = '../static/css/search_results.css'/>
+    <link rel = 'stylesheet' href = '../static/css/certify.css'/>
+                    
+        <div id = "result-area">
+            <h3>Certify Lots</h3>
+            
+            <hr>
+            <table id = "uncert-lots">
+                <tr>
+                    <th> Lot Address </th>
+                    <th class = 'Owner Name'  > Owner Name </th>
+                    <th class = 'Land Title'  > Land Title </th>
+                </tr>
+                <tr v-for = "lot in lots">
+                    <td> {{ lot.street_addr }} </td>
+                    <td class = 'capacity'> {{ lot.owner_name }} </td>
+                    <td class = 'rating-star'>
+                        <button class = "form-btn" @click = "showLandTitle(lot.title, lot.lot_id)">Show Title</button>
+                    </td>
+                </tr>
+            </table>
+            <div id = "certify-form" class = "modal">
+                <div class = "modal-content">
+                    <span @click = "close_modal('certify-form')" class = "close">Close <i id = "close-modal" class = "fa fa-close"></i></span>
+                    <hr>
+                    <h3>Uploaded Land Title: </h3>
+                    <div id = "uploaded-img"></div>
+                    <input type = "text" id = "lot_certified" style = "display:none;"/>
+                    <span id = "cert-bttns">
+                        <button @click = 'deny_certification' class = "half form-btn red">Deny</button>
+                        <button @click = 'approve_certification' class = "half form-btn">Approve</button>
+                    </span>
+                    
+                </div>
+            </div>
+           
+            <div id = "form-success" class = "modal">
+                <div class = "modal-content">
+                    <div class="background"></div>
+                        <div class="container">
+                            <div class="row">
+                                <div class="modalbox success col-sm-8 col-md-6 col-lg-5 center animate">
+                                    <div class="icon">
+                                        <span class="glyphicon glyphicon-ok"></span>
+                                    </div>
+                                    <!--/.icon-->
+                                    <h1>Success!</h1>
+                                    
+                                    <button @click = "close_modal('form-success')" type="button" class="redo btn">Ok</button>
+                                    
+                                </div>
+                                <!--/.success-->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id = "form-failure" class ="modal">
+                <div class = "modal-content">
+                <span @click = "close_modal('form-failure')" class = "close">Close <i id = "close-modal" class = "fa fa-close"></i></span>
+                <hr>            
+                <!--/.row-->
+                    <div class="background"></div>
+                    <div class="container">
+                        <div class="row">
+                            <div class="modalbox error col-sm-8 col-md-6 col-lg-5 center animate" style="display: none;">
+                                <div class="icon">
+                                    <span class="glyphicon glyphicon-thumbs-down"></span>
+                                </div>
+                                <!--/.icon-->
+                                <h1>Oh no!</h1>
+                                <p>Oops! Something went wrong,
+                                    <br> you should try again or contact System Admin.</p>
+                                <button @click = "close_modal('form-failure')" type="button" class="redo btn">Try again</button>
+                                
+                            </div>
+                            <!--/.success-->
+                        </div>
+                        <!--/.row-->
+                    </div>
+                        <!--/.container-->
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <br>
+            <br>
+            <br>
+        </div>
+    </body>
+    </html>
+    `,
+    created(){
+        if(localStorage.getItem("role") === "undefined")
+        {
+            window.location.href = "/index/"
+        }
+        document.title = "Certify Lots"
+        let self = this;
+        if(localStorage.getItem('user_role') === 'M')
+        {
+            alert("You do not have the authority to view this page, redirecting...")
+            window.location.href = "/reservations/"
+        }
+        if (localStorage.getItem('user_role') === 'O')
+        {
+            alert("You do not have the authority to view this page, redirecting...")
+            window.location.href = "/lots/"
+        }
+
+        fetch('/api/admin/certify',
+        {
+            method: 'GET',
+            headers: {
+                Authorization: "Bearer " + localStorage.getItem("token"),
+            }
+        })
+        .then(function (response) {
+            return response.json();
+        })
+        .then(function (jsonResponse) {
+            
+            self.lots = jsonResponse.lots
+        })   
+    },
+    data(){
+        return {
+            lots: []
+        }
+    },
+    methods: {
+        showLandTitle(title, lot_id){
+            let image_space = document.getElementById("uploaded-img");
+            document.getElementById("lot_certified").value = lot_id;
+            image_space.innerHTML = "<img id = 'uploaded-land-title' alt = 'uploaded land title' src = '"+ title + "'/>";
+            let modal = document.getElementById("certify-form");
+            modal.style.display = 'inline-block';
+            
+        },
+        close_modal(target)
+        {
+            //just rip this from the other component, GetResults
+            let modal = document.getElementById(target);
+            modal.style.display = 'none';
+        },
+
+        approve_certification(){
+            fetch('/api/admin/certify?lot_id=' + document.getElementById("lot_certified").value + "&success=1",
+            {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': token
+                },
+                credentials: 'same-origin'
+            })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (jsonResponse) {
+                
+                success = jsonResponse.success
+                if(success == 1)
+                {
+                    document.getElementById("certify-form").style.display = "none";
+                    document.getElementById('form-success').style.display = 'inline-block';
+                }
+                else{
+                    document.getElementById("certify-form").style.display = "none";
+                    document.getElementById('form-failure').style.display = 'inline-block';
+                }
+            })   
+
+        },
+        deny_certification(){
+            fetch('/api/admin/certify?lot_id=' + document.getElementById("lot_certified").value + "&success=0",
+            {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': token
+                },
+                credentials: 'same-origin'
+            })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (jsonResponse) {
+                
+                success = jsonResponse.success
+                if(success == 1)
+                {
+                    document.getElementById('form-success').style.display = 'inline-block';
+                }
+                else{
+                    document.getElementById('form-failure').style.display = 'inline-block';
+                }
+            })   
+
+        }
+    }
+};
+
+const ViewLots = {
+    name: 'ViewLots',
+    template:
+    `
+        <link rel = 'stylesheet' href = '../static/css/search_results.css'/>
+                    
+        <div id = "result-area">
+            <h3>View Lots</h3>
+            <em>**Click the table headings to sort the list by those parameters</em>
+            <hr>
+            <table id = "search-results">
+                <tr>
+                    <th> Lot Address </th>
+                    <th class = 'capacity'  @click = "sort('capacity')"> Capacity <i id = 'capacity-head' class = "fa fa-sort"></i></th>
+                    <th class = 'rating'  @click = "sort('rating')"> Rating <i id = 'rating-head' class = "fa fa-sort"></i></th>
+                    <th class = 'certified' @click = "sort('certified')"> Certified <i id = "certified-head" class = "fa fa-sort"></i></th>
+                    <th class = 'rate'  @click = "sort('rate')"> Hourly Rate/$JMD <i id = 'rate-head' class = "fa fa-sort"></i></th>
+                    <th> Edit Lot </th>
+                    <th> Certify Lot </th>
+                </tr>
+                <tr v-for = "lot in lots">
+                    <td> {{ lot.street_addr }} </td>
+                    <td class = 'capacity'> {{ lot.capacity }} </td>
+                    <td class = 'rating-star'>
+                        <div v-bind:style=getRating(lot.rating) class="stars">
+                            <span class = 'score-tooltip'>{{ lot.rating }}/5</span>
+                        </div>
+                    </td>
+                    <td class = 'certified'> {{ lot.certified }} </td>
+                    <td class = 'rate' style = ""> {{ lot.rate }} </td>
+                    <td> <button class = "form-btn" @click = "edit(lot.lot_id)">Edit Lot</button> </td>
+                    <td> <button class = "form-btn green" @click = "certify(lot.lot_id)">Certify Lot</button> </td>
+                    <td class = 'rating' style = "display:none;"> {{ lot.rating }} </td>
+                    <td class = 'id' style = "display:none;"> {{ lot.id }} </td>
+                </tr>
+            </table>
+            <div id = "edit-form" class = "modal">
+                <div class = "modal-content">
+                    <span @click = "close_modal('edit-form')" class = "close">Close <i id = "close-modal" class = "fa fa-close"></i></span>
+                    <hr>
+                    <h3>Change the lot information below: </h3>
+                    <form id = "edit-lot-form" method = "POST" @submit.prevent = "edit_lot">
+                        <input type = "text" name = "edit_lot_id" id = "edit_lot_id" hidden/>
+                        <input class = "form-input" name = "new_addr" id = "new_addr" placeholder = "New Lot Address"/>
+                        <br>
+                        <input class = "form-input" name = "new_rate" id = "new_rate" placeholder = "New Rate"/>
+                        <br>
+                        <input class = "form-input" name = "new_cap" id = "new_cap" placeholder = "New Capacity"/>
+                        <br>
+                        <input name = "request_token" id = "request_token" style = "display:none;"/>
+                        <br>
+                        <input  class = "form-input form-btn" type = "submit" id = "edit-lot" value = "Edit Lot"/>
+                    </form>
+                </div>
+            </div>
+            <div id = "certify-form" class = "modal">
+                <div class = "modal-content">
+                    <span @click = "close_modal('certify-form')" class = "close">Close <i id = "close-modal" class = "fa fa-close"></i></span>
+                    <hr>
+                    <h3>Upload the Land Title below: </h3>
+                    <form id = 'certification-form' enctype="multipart/form-data" method = "POST" @submit.prevent = "certify_lot">
+                        <br>
+                        <!--
+                        -->
+                        <input hidden type = "text" id = "certify_lot_id" name = "certify_lot_id"/>
+                        <label for = "certify-upload">Upload the Land Title Below</label>
+                        <br>
+                        <input name = "photo" id = "photo" type = "file"/>
+                        <button id = "certify-btn" class = "form-input form-btn" id = "checkout-btn" class = "form-input form-btn" type = "submit">Upload for Certification</button>
+                    </form>
+                </div>
+            </div>
+            <div id = "form-success" class = "modal">
+                <div class = "modal-content">
+                    <span @click = "close_modal('form-success')" class = "close">Close <i id = "close-modal" class = "fa fa-close"></i></span>
+                    <div class="background"></div>
+                        <div class="container">
+                            <div class="row">
+                                <div class="modalbox success col-sm-8 col-md-6 col-lg-5 center animate">
+                                    <div class="icon">
+                                        <span class="glyphicon glyphicon-ok"></span>
+                                    </div>
+                                    <!--/.icon-->
+                                    <h1>Success!</h1>
+                                    <p>We've sent a confirmation to your e-mail
+                                        <br>for verification.</p>
+                                    <button type="button" class="redo btn">Ok</button>
+                                    
+                                </div>
+                                <!--/.success-->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id = "form-failure" class ="modal">
+                <div class = "modal-content">
+                <span @click = "close_modal('form-failure')" class = "close">Close <i id = "close-modal" class = "fa fa-close"></i></span>
+                <hr>            
+                <!--/.row-->
+                    <div class="background"></div>
+                    <div class="container">
+                        <div class="row">
+                            <div class="modalbox error col-sm-8 col-md-6 col-lg-5 center animate" style="display: none;">
+                                <div class="icon">
+                                    <span class="glyphicon glyphicon-thumbs-down"></span>
+                                </div>
+                                <!--/.icon-->
+                                <h1>Oh no!</h1>
+                                <p>Oops! Something went wrong,
+                                    <br> you should try again or contact System Admin..</p>
+                                <button type="button" class="redo btn">Try again</button>
+                                
+                            </div>
+                            <!--/.success-->
+                        </div>
+                        <!--/.row-->
+                    </div>
+                        <!--/.container-->
+                    </div>
+                </div>
+            </div>
+            <div id = "qr-code" class = "modal">
+                <div class = "modal-content">
+                    <span @click = "close_modal('qr-code')" class = "close">Close <i id = "close-modal" class = "fa fa-close"></i></span>
+                    <hr>
+                </div>
+            </div>
+            <hr>
+            
+            <br>
+            <br>
+            
+            <br>
+        </div>
+    </body>
+    </html>
+    `,
+    created(){
+        if(localStorage.getItem("role") === "undefined")
+        {
+            window.location.href = "/index/"
+        }
+        document.title = "View Lots"
+        let self = this;
+        let tok = this.$route.query.tok
+        
+        
+        if(localStorage.getItem('user_role') === 'M')
+        {
+            window.location.href = "/search"
+        }
+
+        fetch('/api/view_lots?owner_id=' + localStorage.getItem('user_id'),
+            {
+                method: 'GET',
+                headers: {
+                    Authorization: "Bearer " + localStorage.getItem("token"),
+                }
+            })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                self.tok = tok
+                self.lots = data.lots;
+            })    
+    },
+    data(){
+        return {
+            lots: []
+        }
+    },
+    methods: {
+        sort(attr){
+            console.log(attr)
+            let dir = "desc"
+            let table = document.getElementById("search-results");
+            let rows, switching, i, x, y, shouldSwitch, switch_count = 0;
+            rows = table.rows;
+            let head_id = attr + "-head" 
+            let head = document.getElementById(head_id)
+            
+            
+            switching = true;
+            while(switching)
+            {
+                if (dir == "asc")
+                {
+                    head.classList.remove("fa-sort")
+                    head.classList.remove("fa-sort-desc")
+                    head.classList.add("fa-sort-asc")
+                }
+                else
+                {
+                    head.classList.remove("fa-sort")
+                    head.classList.add("fa-sort-desc")
+                    head.classList.remove("fa-sort-asc")
+                }
+                switching = false;
+                
+                for (i = 1;i<rows.length-1;i++)
+                {
+                    x = rows[i].getElementsByClassName(attr)[0].innerHTML;
+                    y = rows[i+1].getElementsByClassName(attr)[0].innerHTML;
+                    if(dir == "desc")
+                    {
+
+                        if (parseFloat(x) < parseFloat(y))
+                        {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        if (parseFloat(x) > parseFloat(y))
+                        {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    }
+                }
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i+1], rows[i]);
+                    switching = true;
+                    switch_count++;
+                }
+                else
+                {
+                    if(switch_count == 0 && dir == "desc") 
+                    {
+                        dir = "asc";
+                        switching = true;
+                    }
+                }
+            }
+        },
+
+        getRating(rating){
+            return "--rating: " + rating;
+        },
+
+        close_modal(target)
+        {
+            let modal = document.getElementById(target);
+            modal.style.display = "none";
+        },
+
+        edit(lot_id){
+            document.getElementById("edit-form").style.display = 'inline-block';
+            document.getElementById("edit_lot_id").value = lot_id;
+        },
+
+        certify(lot_id){
+            document.getElementById("certify-form").style.display = 'inline-block';
+            document.getElementById("certify_lot_id").value = lot_id;
+        },
+
+        certify_lot(){
+            let form = document.getElementById("certification-form")
+            let data = new FormData(form);
+            fetch("/api/certify", {
+                method: "POST",
+                body: data,
+                headers: {
+                    'X-CSRFToken': token
+                },
+                credentials: 'same-origin'
+            })
+            .then(function (response){
+                return response.json()
+            })
+            .then(function (jsonResponse){
+                self.errors = jsonResponse.errors;
+                console.log(jsonResponse);
+            })
+        },
+
+        edit_lot(){
+            let form = document.getElementById("edit-lot-form")
+            let data = new FormData(form);
+            fetch("/api/edit", {
+                method: "POST",
+                body: data,
+                headers: {
+                    'X-CSRFToken': token
+                },
+                credentials: 'same-origin'
+            })
+            .then(function (response){
+                return response.json()
+            })
+            .then(function (jsonResponse){
+                self.errors = jsonResponse.errors;
+                console.log(jsonResponse);
+            })
+        }
+    }
 };
 
 const GetResults = {
@@ -1302,7 +1269,7 @@ const GetResults = {
                                 </div>
                             </td>
                             <td class = 'rate' style = ""> {{ lot.rate }} </td>
-                            <td> <button @click = "applyForRes(lot.id, lot.rate)">Reserve</button> </td>
+                            <td> <button class = "form-btn" @click = "applyForRes(lot.lot_id, lot.rate)">Reserve</button> </td>
                             <td class = 'rating' style = "display:none;"> {{ lot.rating }} </td>
                             <td class = 'id' style = "display:none;"> {{ lot.id }} </td>
                             
@@ -1331,7 +1298,8 @@ const GetResults = {
                                 <br>
                                 <label for = "pay-later">Would you like to pay for your reservation later?</label>
                                 <input name = "pay_later" id = "pay_later" type = "checkbox"/>
-                                <input  class = "form-input form-btn" type = "submit" id = "submit-reservation" value = "Apply for reservation!"/>
+                                <br>
+                                <input  style = "width: 100%;"class = "form-btn" type = "submit" id = "submit-reservation" value = "Apply for reservation!"/>
                             </form>
                         </div>
                     </div>
@@ -1397,7 +1365,7 @@ const GetResults = {
                                         <!--/.icon-->
                                         <h1>Oh no!</h1>
                                         <p>Oops! Something went wrong,
-                                            <br> you should try again.</p>
+                                            <br> you should try again or contact System Admin..</p>
                                         <button type="button" class="redo btn">Try again</button>
                                         
                                     </div>
@@ -1426,6 +1394,11 @@ const GetResults = {
             </body>
         </html>`,
         created() {
+            if(localStorage.getItem("role") === "undefined")
+            {
+                window.location.href = "/index/"
+            }
+            document.title = "Search Results"
             let self = this;
             let tok = this.$route.query.tok
             let page = this.$route.query.page
@@ -1646,7 +1619,7 @@ const GetResults = {
                 dummy_end.innerHTML = document.getElementById("end_time").value
                 // REMOVE THIS LINE
                 // YEAH THE LINE BELOW
-                localStorage.setItem('user_id', 2)
+                
                 //THIS IS THE LINE IM TALKING ABOUT ABOVE THIS
                 fetch("/api/reserve/" + localStorage.getItem('user_id') +"/" + lot_id.value,
                 {
@@ -1704,17 +1677,17 @@ const ViewReservations = {
                 <hr>
                 <table id = "reservations">
                     <tr>
-                        <th id ="lot-picture-header"></th>
+                        
                         <th> Lot Address </th>
                         <th class = 'start_time' >Start Time</th>
                         <th class = 'end_time' >End Time</th>
                         <th class = 'driver_name' >Driver Name</th>
                         <th class = 'license_plate' >License Plate</th>
                         <th class = 'state-head' >State</th>
-                        <th class = "context-action" id = "context-action">Review</th>
+                        <th class = "motorist-only context-action" id = "context-action">Review</th>
                     </tr>
                     <tr v-for = "res in reservations">
-                        <td><img class = "lot-picture"/></td>
+                        
                         <td class = 'street_addr'> {{ res.street_addr }} </td>
                         <td class = 'start_time'> {{ res.start_time }} </td>
                         <td class = 'end_time'> {{ res.end_time }} </td>
@@ -1722,7 +1695,7 @@ const ViewReservations = {
                         <td class = 'license_plate'> {{ res.license_plate }} </td>
                         <td @click = "change_state(res.res_id)"> <span class = "state" v-bind:class = (res.state)>{{ res.state }}</span> </td>
                         <td class = 'id' style = "display:none;"> {{ res.res_id }} </td>
-                        <td class = "context-action context-button"><button @click = "context(res.lot_id)" class = "context-action-btn">Review</button>
+                        <td class = " context-action context-button"><button @click = "context(res.lot_id)" class = "motorist-only form-btn context-action-btn">Review</button>
                     </tr>
                 </table>
                 
@@ -1737,7 +1710,7 @@ const ViewReservations = {
                             <table id = "state-btns">
                                 <tr>
                                     <td><span @click = "alter_res('D')" class = "state D">Cancel Reservation</span></td>
-                                    <td v-if="user_role==='O'"><span @click = "alter_res('C')" class = "state C">Mark as Complete</span></td>
+                                    <td class = "owner-only" ><span @click = "alter_res('C')" class = "state C">Mark as Complete</span></td>
                                 </tr>
                             </table>
                             <input style = "display:none;" type = "text" name = "new_state" id = "new_state" readonly />
@@ -1796,19 +1769,14 @@ const ViewReservations = {
         -->
     </html>`,
     created() {
+        if(localStorage.getItem("role") === "undefined")
+        {
+            window.location.href = "/index/"
+        }
+        document.title = "View Reservations"
         let self = this;
         //comment me out for later
-        localStorage.setItem('user_id', 2)
-        localStorage.setItem('role', 'M')
-        if (localStorage.getItem('user_role') == 'O')
-        {
-            let buttons = document.getElementsByClassName("context-action-btn");
-            let x;
-            for (x=0;x<buttons.length;x++)
-            {
-                buttons[x].style.display = 'none'
-            }
-        }
+        
         fetch("/api/reservations/" + localStorage.getItem('user_id') + "?role=" + localStorage.getItem('role'), {
             // get all the information in reservation table and the street address and coordinates of the lot associated with that reservation
             method: "GET",
@@ -1817,6 +1785,7 @@ const ViewReservations = {
             }
         })
         .then(function (response){
+            
             return response.json();
         })
         .then(function (data){
@@ -1845,6 +1814,24 @@ const ViewReservations = {
                     states[x].innerHTML = "Pending";
                 }
             }
+            
+            if (localStorage.getItem('user_role') == 'O')
+            {
+                let motor = document.getElementsByClassName("motorist-only")
+                for (x=0;x<motor.length;x++)
+                {
+                    motor[x].style.display = "none";
+                }
+            }
+            else
+            {
+                let owner = document.getElementsByClassName("owner-only")
+                for (x=0;x<owner.length;x++)
+                {
+                    owner[x].style.display = "none";
+                }
+            }
+            
         })
         
     },
@@ -1950,7 +1937,7 @@ const ViewReservations = {
                 return response.json()
             })
             .then(function (jsonResponse){
-                if (jsonResponse.message === "success")
+                if (jsonResponse.success == 1)
                 {
                     console.log("success!")
                     document.getElementById("success-modal").style.display = 'inline-block';
@@ -2046,24 +2033,24 @@ const Landing = {
             -->
         </body>
     </html>
-    `
+    `,
+    created(){
+        document.title = "Parky"
+    }
 }
 
 // Define Routes
 const routes = [
-    { path: "/", component: Home },
     // Put other routes here
     { path: "/register", component: RegisterForm }, // done
     { path: "/login", component: LoginForm }, // done
     { path: "/lots/new", component: LotForm }, // done
-    //{ path: "/lots/:user_id", component: ViewLots },
+    { path: "/lots/", component: ViewLots },
     { path: "/index", component: Landing}, //done
     { path: "/search", component: Search},
-    
-    { path: "/set/", component: GetToken}, // take me out
+    { path: "/certify", component: CertifyLots},
     { path: "/get", component: GetResults}, //done 
-    { path: "/cars/:user_id/favourites", component: ViewUser},
-    { path: "/reservations/:user_id", component: ViewReservations}, // done
+    { path: "/reservations/", component: ViewReservations}, // done
     // This is a catch all route in case none of the above matches
     { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFound }
 ];

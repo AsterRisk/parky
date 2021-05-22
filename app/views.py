@@ -11,9 +11,9 @@ from app import app, db, login_manager
 from json import JSONEncoder
 from flask import render_template, request, redirect, url_for, flash, jsonify, make_response
 from flask_login import login_user, logout_user, current_user, login_required
-from .forms import LoginForm, RegistrationForm, SearchForm, ReservationForm, ChangeStateForm, RegisterLotForm
+from .forms import LoginForm, RegistrationForm, SearchForm, ReservationForm, ChangeStateForm, RegisterLotForm, EditLotForm, CertifyLotForm, ReviewForm
 from .exceptions import LotIsFullError
-from .models import User, Reservation, Lot, query
+from .models import User, Reservation, Lot, query, Review
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -46,6 +46,18 @@ ALPHA = "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z".split()
 def make_lots(n = 100):
     return [random_lot() for x in range(n)]
 
+def calc_distance(A, B):
+    y = (A[0] - B[0])**2
+    x = (A[1] - B[1])**2
+    return sqrt(y+x)
+
+def score_lot(i):
+    
+    dist = i['dist']
+    rate = round(i['rate'], 2)
+    rating = i['rating']
+    score = -1*dist - (rate/100) + 2*rating # attempt to scale parameters within the bounds (0, 10) in hopes of reducing the influence of magnitude on the final score of the lot
+    return score
 
 def random_lot():
     cap = randint(0, 100)
@@ -78,8 +90,8 @@ def setup_lots(n = 100):
         title_address = None
         sql = ("insert into lots (street_addr, latitude, num_ratings, avg_rating, longitude, hourly_rate, title_address, owner_id, capacity, certified, occupied) values ('{}', {}, {}, {}, {}, {}, {}, {}, {}, {}, {});".format(addr,latitude, num_ratings, rating, longitude, hourly_rate, "NULL", owner_id, cap ,certified, 0)) 
         query(sql)
-        #lot = Lot(street_addr=, latitude=, num_ratings=, avg_rating=, longitude=, hourly_rate=, title_address=, owner_id=, capacity=, certified = )
-        #db.session.add(lot)
+        # lot = Lot(street_addr=, latitude=, num_ratings=, avg_rating=, longitude=, hourly_rate=, title_address=, owner_id=, capacity=, certified = )
+        # db.session.add(lot)
     db.session.commit()
 
 def make_lot_dict(lot):
@@ -148,11 +160,157 @@ def create_checkout_session():
                 },
             ],
             mode = 'payment',
-            success_url = "http://127.0.0.1:5000/api/pay_success",
-            cancel_url = "http://127.0.0.1:5000/api/pay_failure"
+            success_url = "http://127.0.0.1:5000/search",
+            cancel_url = "http://127.0.0.1:5000/search"
         )
         print(checkout_session)
         return jsonify({'id':checkout_session.id}), 200
+
+@app.route("/api/edit", methods = ["POST"])
+def edit_lot():
+    form = EditLotForm()
+    success = True
+    lot_id = int(form.edit_lot_id.data)
+    if(form.validate_on_submit()):
+        rate = form.new_rate.data
+        addr = form.new_addr.data
+        capacity = form.new_cap.data
+        try:
+            try:
+                rate =float(rate)
+                rate_flag = True
+            except ValueError:
+                pass
+            try:
+                capacity = int(capacity)
+                cap_flag = True
+            except ValueError:
+                pass
+            if (not(addr == '')):
+                addr_flag = True
+            if (rate_flag):
+                try:
+                    lot = Lot.query.filter_by(lot_id = lot_id).with_for_update.first()
+                    lot.rate = rate
+                    db.session.add(lot)
+                except:
+                    lot = query("SELECT * FROM lots WHERE lot_id = {} FOR UPDATE;".format(lot_id))
+                    query("UPDATE lots SET hourly_rate = {} where lot_id = {};".format(rate, lot_id))
+            if (addr_flag):
+                try:
+                    lot = Lot.query.filter_by(lot_id = lot_id).with_for_update.first()
+                    lot.rate = rate
+                    db.session.add(lot)
+                except:
+                    lot = query("SELECT * FROM lots WHERE lot_id = {} FOR UPDATE;".format(lot_id))
+                    query("UPDATE lots SET street_addr = '{}' where lot_id = {};".format(addr, lot_id))
+            if (cap_flag):
+                try:
+                    lot = Lot.query.filter_by(lot_id = lot_id).with_for_update.first()
+                    lot.rate = rate
+                    db.session.add(lot)
+                except:
+                    lot = query("SELECT * FROM lots WHERE lot_id = {} FOR UPDATE;".format(lot_id))
+                    query("UPDATE lots SET capacity = {} where lot_id = {};".format(capacity, lot_id))
+            db.session.commit()
+            response = {
+                'message':'Edit Successful'
+            }
+            return jsonify(response), 200
+        except:
+            response = {
+                'message':'Edit Failed'
+            }
+            return jsonify(response), 403
+        
+@app.route("/api/admin/certify", methods = ['GET', 'POST'])
+def certify_lots():
+    try:
+        if (request.method == "GET"):
+            print("test")
+            results= []
+            lots = query("select lot_id, street_addr, email, certified, name, title_address from lots inner join users on lots.owner_id = users.user_id where certified = 'f';")    
+            for lot in lots:
+                buffer = {
+                    "lot_id":lot['lot_id'],
+                    "street_addr":lot['street_addr'],
+                    "owner_email":lot['email'],
+                    "owner_name":lot['name'],
+                    "title":lot['title_address']
+                }
+                results.append(buffer)
+            print(results)
+            response = {
+                "message":"list of uncertified lots",
+                "lots":results
+            }
+            return jsonify(response), 200
+        if (request.method == "POST"):
+            lot_id = request.args.get('lot_id')
+            success = int(request.args.get('success'))
+            if (success == 1):
+                query("update lots set certified = 't' where lot_id = {};".format(lot_id))
+                response = {
+                    "message":"decision successful",
+                    "success": 1
+                }
+                # mail to the lot owner that their certification has been approved
+                return jsonify(response), 200
+            if (success == 0):
+                response = {
+                    "message":"decision successful",
+                    "success": 1
+                }
+                # mail to the lot owner that their certification has been approved
+                return jsonify(response), 200
+    except Exception as e:
+        response = {
+            "message":"something went wrong",
+            "success": 0
+        }
+        # mail to the lot owner that their certification has been approved
+        return jsonify(response), 403
+
+@app.route("/api/certify", methods = ['POST'])
+def upload_lot_certificate():
+    form = CertifyLotForm()
+    print("test")
+    try:
+        if (form.validate_on_submit()):
+            lot_id = int(form.certify_lot_id.data)
+            img = form.photo.data
+            path = secure_filename(img.filename)
+            path = ''.join((os.getcwd(), app.config['TITLES'], path))
+            img.save(path)
+            path = "../static/land_titles/{}".format(img.filename)
+            try:
+                lot = Lot.query.filter_by(lot_id = lot_id).with_for_update.first()
+                lot.title_address = path
+                db.session.add(lot)
+            except Exception as e:
+                print(e)
+                lot = query("SELECT * FROM lots WHERE lot_id = {} FOR UPDATE;".format(lot_id))
+                query("UPDATE lots SET title_address = '{}' where lot_id = {};".format(path, lot_id))
+            db.session.commit()
+            response = {
+                "message":"Document Upload successful",
+                "success": 1
+            }
+            return jsonify(response), 200
+        else:
+            print(form_errors(form))
+            response = {
+            "message": "An error occurred",
+            "success": 0
+        }
+        return jsonify(response), 405
+    except Exception as e:
+        print(e)
+        response = {
+            "message": "An error occurred",
+            "success": 0
+        }
+        return jsonify(response), 403
 
 @app.route('/api/pay_success')
 def payment_success():
@@ -169,18 +327,78 @@ def setup_demo():
     setup_lots()
     return redirect("/set")
 
+@app.route("/api/review", methods = ["POST"])
+def review_lot():
+    print("test")
+    form = ReviewForm()
+    if (not(request.method == "POST")):
+        response = {
+            "message": "Bad request",
+            "success":0
+        }
+        resp_code = 500
+    if(form.validate_on_submit()):
+        text = form.review_text.data
+        lot_id = int(form.review_lot_id.data)
+        rating = int(form.rating.data)
+        try:
+            new_rev = Review(rating, text, lot_id)
+            db.session.add(new_rev)
+        except:
+            query("insert into reviews (text, rating, lot_id) values ('{}', {}, {});".format(text, rating, lot_id))
+        try:
+            lot = Lot.query.filter_by(lot_id = lot_id)
+            lot.avg_rating = (lot.avg_rating*lot.num_ratings + rating)/(lot.num_ratings+1)
+            lot.num_ratings += 1
+        except:
+            review_lot = query("select * from lots where lot_id = {};".format(lot_id)).first()
+            
+            num_rate = int(review_lot['num_ratings'])
+            avg_rate = float(review_lot['avg_rating'])
+            avg_rate = ((avg_rate*num_rate) + rating)/num_rate+1
+            num_rate += 1
+            query("update lots set avg_rating = {} where lot_id = {};".format(avg_rate, lot_id))
+            query("update lots set num_ratings = {} where lot_id = {};".format(num_rate, lot_id))
+        db.session.commit()
+        response = {
+            "message": "Review successful",
+            "success":1
+        }
+        resp_code = 200
+    else:
+        response = {
+            "message": "Review unsuccessful, form error",
+            "success":0
+        }
+        print(form_errors(form))
+        resp_code = 403
+    return jsonify(response), resp_code
+        # mail to lot owner that they have a new review on their lot
+
 @app.route("/api/reservations/<user_id>", methods= ['GET'])
 def get_reservations(user_id):
     try:
         reservations = []
         role = request.args.get('role')
-        
         if (role == "O"):
-            lots = Lot.query.filter_by(owner_id = user_id) # Get the list of lots the user owns
+            lots = query("select lot_id from lots where owner_id = {};".format(user_id))
             for lot in lots:
-                buffer = query("SELECT res_id, driver_name, state, license_plate, reservations.lot_id, start_time, end_time, media_address, street_addr FROM reservations INNER JOIN lots ON reservations.lot_id = lots.lot_id where lots.lot_id = {};".format(lot.lot_id)).all()
-                
-                reservations.append(buffer)
+                buffer = query("SELECT res_id, driver_name, state, license_plate, reservations.lot_id, start_time, end_time, media_address, street_addr FROM reservations INNER JOIN lots ON reservations.lot_id = lots.lot_id where lots.lot_id = {};".format(lot['lot_id'])).all()
+                print(buffer)
+                if(len(buffer) > 0):
+                    for res in buffer:
+                        buff = {
+                            "res_id":res['res_id'],
+                            "driver_name":res['driver_name'],
+                            "state":res['state'],
+                            "license_plate":res['license_plate'],
+                            "lot_id":res["lot_id"],
+                            "start_time":res['start_time'],
+                            "end_time":res['end_time'],
+                            "qrcode":res['media_address'],
+                            "street_addr":res['street_addr'],
+                        }
+                        reservations.append(buff)
         elif (role == "M"):
             rezzes = query("SELECT res_id, driver_name, state, license_plate, reservations.lot_id, start_time, end_time, media_address, street_addr FROM reservations INNER JOIN lots ON reservations.lot_id = lots.lot_id where reservations.user_id = {};".format(user_id)).all()
             for res in rezzes:
@@ -220,11 +438,13 @@ def save_change():
                 db.session.commit()
                 response = {
                     "message": "success",
+                    "success": 1
                 }
                 return jsonify(response), 200
             except Exception as e:
                 response = {
                     "message": "failure",
+                    "success": 0
                 }
                 print ("HEllo: {}".format(e))
                 return jsonify(response), 405
@@ -232,16 +452,42 @@ def save_change():
         else:
             response = {
                     "message": "failure",
-                    "errors": form_errors(form)
+                    "errors": form_errors(form),
+                    "success": 0
                 }
             print(form_errors(form))
             return jsonify(response), 403
     else:
         response = {
             "message": "failure",
-            "errors": "Bad Request"
+            "errors": "Bad Request",
+            "success": 0
         }
         return jsonify(response), 500
+
+@app.route("/api/view_lots")
+def get_lots():
+    owner_id = request.args.get('owner_id')
+    results = []
+    try:
+        lots = Lot.query.filter_by(owner_id=owner_id).all()
+    except:
+        lots = query("select * from lots where owner_id = {};".format(owner_id))
+    for i in lots:
+        buff = {
+            "lot_id":i['lot_id'],
+            "street_addr":i['street_addr'],
+            "certified": i['certified'],
+            "capacity":i['capacity'],               
+            "rate": round(float(i['hourly_rate']), 2),
+            "rating": i['avg_rating'],
+        }
+        results.append(buff)
+    response = {
+        "lots":results,
+        "message": "List of lots owned by the user"
+    }
+    return jsonify(response), 200
 
 @app.route("/api/reserve/<user_id>/<lot_id>", methods= ['POST'])
 def reserve_lot(lot_id, user_id):
@@ -258,28 +504,39 @@ def reserve_lot(lot_id, user_id):
                 db.session.commit() # unlocks the record so that it can be edited again
             except LotIsFullError:
                 response = {
-                    "message": "This lot is already at capacity, try again later"
+                    "message": "This lot is already at capacity, try again later",
+                    "success": 1
                 }
                 return jsonify(response), 403
             start = form.start_time.data
             end = form.end_time.data
             driver_name = form.driver_name.data
             license_plate = form.license_plate.data
+            if (form.pay_later.data == True):
+                state = 'P'
+            else:
+                state = 'C'
+            # Generates a QR code representing the driver reservation :=> Intended for functionality that allows security guards to automatically
+            # scan lots and take them out of the registry 
             img = qrcode.make(data = "{}|{}|{}|{}|{}|{}".format(lot_id, user_id, start, end, driver_name, license_plate))
             
             path = secure_filename("{}_{}_{}.png".format(license_plate, ''.join(driver_name.split()), user_id))
             path = ''.join((os.getcwd(), app.config['RESERVATIONS'], path))
-            
+            path = "../static/reservations/{}".format(img.filename)
             img.save(path)
             user_id = int(user_id)
             lot_id = int(lot_id)
-            query("insert into reservations (user_id, lot_id, media_address, start_time, end_time, driver_name, license_plate, state) values ({}, {}, '{}', '{}', '{}', '{}', '{}', 'P');".format(user_id, lot_id, path, start, end, driver_name, license_plate))
-            #res = Reservation(user_id=user_id, lot_id=lot_id, media_address = path, start_time = start, end_time = end, driver_name = driver_name, license_plate = license_plate)
+            
+            try: 
+                res = Reservation(user_id=user_id, lot_id=lot_id, media_address = path, start_time = start, end_time = end, driver_name = driver_name, license_plate = license_plate, state= state)
+                db.session.add(res)
+            except:
+                query("insert into reservations (user_id, lot_id, media_address, start_time, end_time, driver_name, license_plate, state) values ({}, {}, '{}', '{}', '{}', '{}', '{}', );".format(user_id, lot_id, path, start, end, driver_name, license_plate, state))
             try:
-                
                 db.session.commit()
                 response = {
                     "message":"Reservation creation successful.",
+                    "success": 1
                 }
                 REQUESTS[form.token.data] = None
                 return jsonify(response), 200
@@ -287,27 +544,17 @@ def reserve_lot(lot_id, user_id):
                 print("Error occurred: {}".format(e))
                 response = {
                     "message": "An error occurred.",
+                    "success": 0
+                    
                 }
                 return jsonify(response), 500
         else:
             print(form.errors)
             response = {
                     "message": "An error occurred.",
+                    "success": 0
                 }
             return jsonify(response), 500
-
-def calc_distance(A, B):
-    y = (A[0] - B[0])**2
-    x = (A[1] - B[1])**2
-    return sqrt(y+x)
-
-def score_lot(i):
-    
-    dist = i['dist']
-    rate = round(i['rate'], 2)
-    rating = i['rating']
-    score = -1*dist - (rate/100) + 2*rating # attempt to scale parameters within the bounds (0, 10) in hopes of reducing the influence of magnitude on the final score of the lot
-    return score
 
 @app.route("/api/get", methods = ['GET'])
 def get_results():
@@ -336,7 +583,7 @@ def get_results():
                 "rating": i['avg_rating'],
             }
             results.append(buff)
-        results = sorted(results, key = score_lot)
+        results = sorted(results, key = score_lot, reverse = True)
         response = {
                 "tok": token,
                 "message": "List of options",
@@ -465,6 +712,8 @@ def register():
                 print(role)
                 phone_num = form.phone_num.data
                 query("insert into users (email, name, role, phone_num, salt, password_hash) values ('{}', '{}', '{}', '{}', {}, '{}');".format(email, name, role, phone_num, salt, pass_hash))
+                # new_user = User(name, pass_hash, salt, email, role)
+                # db.session.add(new_user)
                 db.session.commit()
                 flash ("User added successfully", "success")
                 flash("Please login with your credentials below")
@@ -511,22 +760,28 @@ def new_lot():
             print("Path: {}".format(path))
             path = ''.join((os.getcwd(), app.config['TITLES'], path))
             img.save(path)
+            path = "../static/land_titles/{}".format(img.filename)
             query("INSERT INTO lots (owner_id, street_addr, capacity, occupied, latitude, longitude, hourly_rate, num_ratings, avg_rating, certified, title_address) values ({}, '{}', {}, {}, {}, {}, {}, {}, {}, {}, '{}');".format(owner_id, addr, capacity, 0, latitude, longitude, rate, 0, 0, False, path))
+            # new_lot = Lot(addr, latitude, longitude, rate, path, owner_id, capacity)
+            # db.session.add(new_lot)
             response = {
-                "message":"success"
+                "message":"success",
+                "success": 1
             }
             db.session.commit()
             return jsonify(response), 200
         else:
             print(form_errors(form))
             response = {
-                "message":"form error"
+                "message":"form error",
+                "success": 0
             }
             return jsonify(response), 403
     else:
         print("bad request")
         response = {
-            "message":"bad request"
+            "message":"bad request",
+            "success": 0
         }
         return jsonify(response), 500
 

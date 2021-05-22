@@ -47,23 +47,17 @@ class User(db.Model):
     __tablename__ = 'users'
 
     user_id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50))
+    name = db.Column(db.String(50))
     password_hash = db.Column(db.String(255))
     salt = db.Column(db.Integer)
-    fname = db.Column(db.String(40))
-    lname = db.Column(db.String(40))
     email = db.Column(db.String(30))
-    TRN = db.Column(db.String(12))
     role = db.Column(db.String(2))
     
-    def __init__(self, username, password, salt, fname, lname, email, TRN, role):
-        self.username = username
+    def __init__(self, name, password_hash, salt, email, role):
+        self.name = name
         self.salt = salt
-        self.password_hash = generate_password_hash((password + str(salt)), method='pbkdf2:sha256')
-        self.fname = fname
-        self.lname = lname
+        self.password_hash = password_hash
         self.email = email
-        self.TRN = TRN
         self.role = role
 
     def is_authenticated(self):
@@ -97,7 +91,6 @@ class Review(db.Model):
         self.rating = rating
         self.review_text = review_text
         
-
 class Reservation(db.Model):
 
     __tablename__ = 'reservations'
@@ -106,7 +99,6 @@ class Reservation(db.Model):
     user_id = db.Column(db.Integer)
     lot_id = db.Column(db.Integer)
     end_time = db.Column(db.String(6))
-    
     start_time = db.Column(db.String(6))
     driver_name = db.Column(db.String(40))
     media_address = db.Column(db.String(70))

@@ -1,0 +1,20 @@
+#uploaded-img{
+    width:400px;
+    height:400px;
+    align-content: center;
+}
+
+#uploaded-land-title{
+    width:400px;
+    height:400px;
+    margin-left:250px;
+    margin-bottom: 50px;
+}
+
+#uncert-lots{
+    width: 100%;
+}
+
+#cert-bttns{
+    margin-left: 40px;
+}
